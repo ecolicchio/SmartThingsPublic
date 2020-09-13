@@ -14,8 +14,8 @@
  *
  *  Author: Ettore Colicchio
  *
- *  Date: 2020-05-19
- *  Rev 0.0.27
+ *  Date: 2020-09-13
+ *  Rev 0.0.29
  */
 
  
@@ -76,7 +76,9 @@ metadata {
         command "setUnoccupied"
 
 		fingerprint profileId: "0104", inClusters: "0000,0003,0201,0202,0204,0405", outClusters: "0402,0405", manufacturer: "Viconics", model: "254-143", deviceJoinName: "VT8350" //Viconics VT8350
-		fingerprint profileId: "0104", inClusters: "0000,0003,0201,0202,0204,0405", outClusters: "0402,0405", manufacturer: "Schneider Electric", model: "254-145", deviceJoinName: "SE8350" //Schneider Electric SE8350	
+		fingerprint profileId: "0104", inClusters: "0000,0003,0201,0202,0204,0405", outClusters: "0402,0405", manufacturer: "Schneider Electric", model: "254-145", deviceJoinName: "SE8350" //Schneider Electric SE8350
+		fingerprint profileId: "0104", inClusters: "0000,0003,0201,0202,0204,0405", outClusters: "0402,0405", manufacturer: "Viconics", model: "254-153", deviceJoinName: "VTR8350" //Viconics VTR8350
+		fingerprint profileId: "0104", inClusters: "0000,0003,0201,0202,0204,0405", outClusters: "0402,0405", manufacturer: "Schneider Electric", model: "254-155", deviceJoinName: "SER8350" //Schneider Electric SER8350        
 	}
 
     
@@ -440,15 +442,32 @@ def parseCalled(String description) {
     else if (description?.startsWith("humidity")) 
 	{
 
-    def descMap = parseDescriptionAsMap(description)
-
+    	def descMap = parseDescriptionAsMap(description)
 		log.debug "Desc Map: $descMap"
 		log.debug "HUMIDITY"
 		map.name = "humidity"
         map.unit = "%"
 		//map.value = descMap.humidity
-		map.value = (description - "humidity: " - "%").trim()     
-        map.isStateChange = true               
+
+		map.value = (description - "humidity: " - "%").trim()
+        
+        if (map.value.startsWith("0."))
+        {
+        	if (map.value.length() < 4)
+            {
+            	map.value = map.value - "0." + "0"
+            }
+            else
+            {
+            	map.value = map.value - "0."
+            }
+        }
+        
+       
+        //map.value = (description - "humidity: 0." - "%").trim()   
+		
+        log.debug (map.value)
+        map.isStateChange = true           
     }
 
 
@@ -530,7 +549,7 @@ def pollCalled() {
 
                 zigbee.readAttribute(0x201, 0x0650),	//occupancy command
 
-                zigbee.readAttribute(0x201, 0x0A58),	//GFan Status
+                //zigbee.readAttribute(0x201, 0x0A58),	//GFan Status
 
                 zigbee.readAttribute(0x201, 0x0013),	//Read Unocc Cool Setpoint
 
@@ -547,6 +566,33 @@ def pollCalled() {
                 zigbee.readAttribute(0x201, 0x06BF),    //Effective Mode Status
                 
                 zigbee.readAttribute(0x201, 0x0688),    //Fan Mode Status
+                
+                
+                zigbee.configureReporting(0x0201, 0x0000, 0x29, 10, 60, 50), //Local temp
+
+                zigbee.configureReporting(0x0201, 0x0012, 0x29, 1, 300, 10), //Heating Setpoint
+
+                zigbee.configureReporting(0x0201, 0x0687, 0x30, 1, 300, 1), //System mode
+
+                zigbee.configureReporting(0x0201, 0x0011, 0x29, 1, 300, 10), //Cooling Setpoint
+
+                //zigbee.configureReporting(0x0201, 0x0A58, 0x10, 1, 300, 1), //GFan
+
+                zigbee.configureReporting(0x0201, 0x0013, 0x29, 1, 300, 10), //Unocc cooling Setpoint
+
+                zigbee.configureReporting(0x0201, 0x0014, 0x29, 1, 300, 10), //Unocc heating Setpoint
+
+                zigbee.configureReporting(0x0201, 0x0C50, 0x30, 1, 300, 1), //Effective occupancy
+
+                zigbee.configureReporting(0x0201, 0x0698, 0x30, 1, 300, 1), //Fan Mode
+
+                zigbee.configureReporting(0x0204, 0x0000, 0x30, 1, 300, 1), //Temperature Display Mode
+
+                zigbee.configureReporting(0x0405, 0x0000, 0x21, 60, 300, 5), //RH
+
+                zigbee.configureReporting(0x0201, 0x06BF, 0x30, 1, 300, 1), //Mode status   
+                
+                zigbee.configureReporting(0x0201, 0x0688, 0x30, 1, 300, 1), //Fan Mode
 
                 sendEvent( name: 'change', value: 0 )
 
@@ -1778,11 +1824,37 @@ def configure() {
 
         zigbee.readAttribute(0x204, 0x0000),	//Read Temperature Display Mode
 
-        zigbee.readAttribute(0x405, 0x0000),	
+        zigbee.readAttribute(0x405, 0x0000),	//RH
 
         zigbee.readAttribute(0x201, 0x06BF),	//Mode status
         
-         zigbee.readAttribute(0x201, 0x0688),	//Fan mode
+        zigbee.readAttribute(0x201, 0x0688),	//Fan mode
+         
+        zigbee.configureReporting(0x0201, 0x0000, 0x29, 10, 60, 50), //Local temp
+
+        zigbee.configureReporting(0x0201, 0x0012, 0x29, 1, 300, 10), //Heating Setpoint
+
+        zigbee.configureReporting(0x0201, 0x0687, 0x30, 1, 300, 1), //System mode
+
+        zigbee.configureReporting(0x0201, 0x0011, 0x29, 1, 300, 10), //Cooling Setpoint
+
+        //zigbee.configureReporting(0x0201, 0x0A58, 0x10, 1, 300, 1), //GFan
+
+        zigbee.configureReporting(0x0201, 0x0013, 0x29, 1, 300, 10), //Unocc cooling Setpoint
+
+        zigbee.configureReporting(0x0201, 0x0014, 0x29, 1, 300, 10), //Unocc heating Setpoint
+
+        zigbee.configureReporting(0x0201, 0x0C50, 0x30, 1, 300, 1), //Effective occupancy
+
+        zigbee.configureReporting(0x0201, 0x0698, 0x30, 1, 300, 1), //Fan Mode
+
+        zigbee.configureReporting(0x0204, 0x0000, 0x30, 1, 300, 1), //Temperature Display Mode
+
+        zigbee.configureReporting(0x0405, 0x0000, 0x21, 60, 300, 5), //RH
+
+        zigbee.configureReporting(0x0201, 0x06BF, 0x30, 1, 300, 1), //Mode status   
+
+        zigbee.configureReporting(0x0201, 0x0688, 0x30, 1, 300, 1), //Fan Mode     
 
 	], 200)
 

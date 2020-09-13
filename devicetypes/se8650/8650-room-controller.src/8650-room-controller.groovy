@@ -14,12 +14,12 @@
  *
  *  Author: Ettore Colicchio
  *
- *  Date: 2020-05-19
- *  Rev 0.0.26
+ *  Date: 2020-09-13
+ *  Rev 0.0.27
 
  */
 
- 
+import physicalgraph.zigbee.zcl.DataType
 
 preferences {
 
@@ -192,9 +192,9 @@ def parseCalled(String description) {
 
 	def map = [:]
 
-	if (description?.startsWith("read attr -")) {
+	if (description?.startsWith("read attr -")  || description?.startsWith("catchall: ")) {
 
-		def descMap = parseDescriptionAsMap(description)
+		def descMap = zigbee.parseDescriptionAsMap(description)
 
 		log.debug "Desc Map: $descMap"
 
@@ -467,7 +467,25 @@ def parseCalled(String description) {
 		map.name = "humidity"
         map.unit = "%"
 		//map.value = descMap.humidity
-		map.value = (description - "humidity: " - "%").trim()     
+
+		map.value = (description - "humidity: " - "%").trim()
+        
+        if (map.value.startsWith("0."))
+        {
+        	if (map.value.length() < 4)
+            {
+            	map.value = map.value - "0." + "0"
+            }
+            else
+            {
+            	map.value = map.value - "0."
+            }
+        }
+        
+       
+        //map.value = (description - "humidity: 0." - "%").trim()   
+		
+        log.debug (map.value)
         map.isStateChange = true
 
     }
@@ -567,6 +585,31 @@ def pollCalled() {
 
                 //zigbee.readAttribute(0x201, 0x0C80),    //Effective System Mode
 				zigbee.readAttribute(0x201, 0x06BF),    //Mode Status
+  
+                zigbee.configureReporting(0x0201, 0x0000, 0x29, 10, 60, 50), //Local temp
+
+                zigbee.configureReporting(0x0201, 0x0012, 0x29, 1, 300, 10), //Heating Setpoint
+
+                zigbee.configureReporting(0x0201, 0x0687, 0x30, 1, 300, 1), //System mode
+
+                zigbee.configureReporting(0x0201, 0x0011, 0x29, 1, 300, 10), //Cooling Setpoint
+
+                zigbee.configureReporting(0x0201, 0x0A58, 0x10, 1, 300, 1), //GFan
+
+                zigbee.configureReporting(0x0201, 0x0013, 0x29, 1, 300, 10), //Unocc cooling Setpoint
+
+                zigbee.configureReporting(0x0201, 0x0014, 0x29, 1, 300, 10), //Unocc heating Setpoint
+
+                zigbee.configureReporting(0x0201, 0x0C50, 0x30, 1, 300, 1), //Effective occupancy
+
+                zigbee.configureReporting(0x0201, 0x0698, 0x30, 1, 300, 1), //Fan Mode
+
+                zigbee.configureReporting(0x0204, 0x0000, 0x30, 1, 300, 1), //Temperature Display Mode
+
+                zigbee.configureReporting(0x0405, 0x0000, 0x21, 60, 300, 5), //RH
+
+                zigbee.configureReporting(0x0201, 0x06BF, 0x30, 1, 300, 1), //Mode status      
+                
 
                 sendEvent( name: 'change', value: 0 )
 
@@ -576,7 +619,10 @@ def pollCalled() {
 
 }				
 
-
+def ping() {
+	log.debug "ping"
+	zigbee.readAttribute(0x0201, 0x0000)
+}
 
 def getTemperature(value) {
 
@@ -1819,6 +1865,32 @@ def configure() {
         //zigbee.readAttribute(0x201, 0x0C80),    //Effective System Mode
         
         zigbee.readAttribute(0x201, 0x06BF),	//Mode status
+        
+        zigbee.configureReporting(0x0201, 0x0000, 0x29, 10, 60, 50), //Local temp
+
+        zigbee.configureReporting(0x0201, 0x0012, 0x29, 1, 300, 10), //Heating Setpoint
+
+        zigbee.configureReporting(0x0201, 0x0687, 0x30, 1, 300, 1), //System mode
+
+        zigbee.configureReporting(0x0201, 0x0011, 0x29, 1, 300, 10), //Cooling Setpoint
+
+        zigbee.configureReporting(0x0201, 0x0A58, 0x10, 1, 300, 1), //GFan
+
+        zigbee.configureReporting(0x0201, 0x0013, 0x29, 1, 300, 10), //Unocc cooling Setpoint
+
+        zigbee.configureReporting(0x0201, 0x0014, 0x29, 1, 300, 10), //Unocc heating Setpoint
+
+        zigbee.configureReporting(0x0201, 0x0C50, 0x30, 1, 300, 1), //Effective occupancy
+
+        zigbee.configureReporting(0x0201, 0x0698, 0x30, 1, 300, 1), //Fan Mode
+
+        zigbee.configureReporting(0x0204, 0x0000, 0x30, 1, 300, 1), //Temperature Display Mode
+
+        zigbee.configureReporting(0x0405, 0x0000, 0x21, 60, 300, 1), //RH
+
+        zigbee.configureReporting(0x0201, 0x06BF, 0x30, 1, 300, 1), //Mode status
+                
+                       
 
 
 	], 200)
@@ -1957,7 +2029,6 @@ def setOccupied() {
     Integer setpointModeNumber;
 
     def modeToSendInString;
-
 
 
     modeNumber = 01
